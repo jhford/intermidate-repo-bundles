@@ -3,6 +3,29 @@ set -e
 time=0;
 pauseTime=0;
 
+if [ ! -e mozilla-central ] ; then
+  hg clone https://hg.mozilla.org/mozilla-central
+fi
+
+TAR=${TAR:-tar}
+XZ=${XZ:-xz}
+GZIP=${GZIP:-gzip}
+GUNZIP=${GUNZIP:-gunzip}
+BZIP2=${BZIP2:-bzip2}
+BUNZIP2=${BUNZIP2:-bunzip2}
+PIGZ=${PIGZ:-pigz}
+UNPIGZ=${UNPIGZ:-unpigz}
+
+purge () {
+  if [ $(uname) == Darwin ] ; then
+    sudo purge
+  else
+    sudo sh -c 'echo 1 >/proc/sys/vm/drop_caches'
+    sudo sh -c 'echo 2 >/proc/sys/vm/drop_caches'
+    sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'
+  fi
+}
+
 logBegin () {
   time=$(date +%s)
 }
@@ -36,7 +59,7 @@ EOF
     if [ $type == size ] ; then
       val="    \"$val-filesize\": $(du -s $val | cut -f1)"
     else
-      val="    \"$type\": $(du -s $val | cut -f1)"
+      val="    \"$type\": $val"
     fi
     if [ $1 ] ; then
       val="$val,"
@@ -50,42 +73,42 @@ EOF
   pauseTime=0;
 }
 
-reps="0" # 1 2 3 4 5 6 7 8 9
-xzlevels="" #"0 0e 1 1e 2 2e 3 3e 4 4e 5 5e 6 6e 7 7e 8 8e 9 9e"
-levels="1 2 3 4 5 6 7 8 9"
+reps="0 1 2 3 4 5 6 7 8 9"
+xzlevels="0 2 4 5 6 6e 8 9 9e"
+levels="1 3 5 6 7 9"
 threads="1 2 4"
 
 # 4 days of mozilla-central
 # bbea1ed9586a -> bb5c1f7cc078
 
 # Generating base
-hg -R mozilla-central up -r bbea1ed9586a -C
+hg -R mozilla-central up -r bbea1ed9586a -C &> /dev/null
 for i in $reps ; do
-  sudo purge
+  purge
   logBegin
-  gtar -cpf base.tar --level=0 -g out.snar mozilla-central
+  ${TAR} -cpf base.tar --level=0 -g out.snar mozilla-central
   logEnd "generate-tar-base" $i size base.tar
 done
 
 # Generating diff
-hg -R mozilla-central up -r bb5c1f7cc078 -C
+hg -R mozilla-central up -r bb5c1f7cc078 -C &> /dev/null
 for i in $reps ; do
-  sudo purge
+  purge
   logBegin
-  gtar -cpf diff.tar -g out.snar mozilla-central
+  ${TAR} -cpf diff.tar -g out.snar mozilla-central
   logEnd "generate-tar-diff" $i size diff.tar
 done
 
 # Extracting everything
 for i in $reps ; do
-  sudo purge
+  purge
   rm -rf output
   mkdir output
   logBegin
-  gtar -C output -xf base.tar -g /dev/null
+  ${TAR} -C output -xf base.tar -g /dev/null
   logEnd "extract-tar-base" $i size output
   logBegin
-  gtar -C output -xf diff.tar -g /dev/null
+  ${TAR} -C output -xf diff.tar -g /dev/null
   logEnd "extract-tar-diff" $i size output
   rm -rf temp
 done
@@ -97,13 +120,13 @@ for img in diff-comp base-comp ; do
   for i in $reps ; do
     for l in $xzlevels ; do
       for t in $threads ; do
-        sudo purge
+        purge
         logBegin
-        xz -T $t -${l} ${img}.tar
+        $XZ -T $t -${l} ${img}.tar
         logEnd "compress-xz" $i size ${img}.tar.xz level $l threads $t
-        sudo purge
+        purge
         logBegin
-        xz -T $t --decompress ${img}.tar.xz
+        $XZ -T $t --decompress ${img}.tar.xz
         logEnd "decompress-xz" $i level $l threads $t
       done
     done
@@ -111,38 +134,42 @@ for img in diff-comp base-comp ; do
     for l in $levels ; do
       # Bzip2
       rm -f ${img}.tar.bz2
-      sudo purge
+      purge
       logBegin
-      bzip2 -$l ${img}.tar
+      $BZIP2 -$l ${img}.tar
       logEnd "compress-bzip2" $i size ${img}.tar.bz2 level $l
-      sudo purge
+      purge
       logBegin
-      bunzip2 ${img}.tar.bz2
+      $BUNZIP2 ${img}.tar.bz2
       logEnd "decompress-bzip2" $i level $l
 
       # Gzip
       rm -f ${img}.tar.gz
-      sudo purge
+      purge
       logBegin
-      gzip -$l ${img}.tar
+      $GZIP -$l ${img}.tar
       logEnd "compress-gzip" $i size ${img}.tar.gz level $l
-      sudo purge
+      purge
       logBegin
-      gunzip ${img}.tar.gz
+      $GUNZIP ${img}.tar.gz
       logEnd "decompress-gzip" $i level $l
 
       # pigz
       for t in $threads ; do
         rm -f ${img}.tar.gz
-        sudo purge
+        purge
         logBegin
-        pigz -p ${t} -${l} ${img}.tar
+        $PIGZ -p ${t} -${l} ${img}.tar
         logEnd "compress-pigz" $i size ${img}.tar.gz level $l threads $t
-        sudo purge
+        purge
         logBegin
-        unpigz -p ${t} ${img}.tar.gz
+        $UNPIGZ -p ${t} ${img}.tar.gz
         logEnd "decompress-pigz" $i level $l threads $t
       done
     done
   done
 done
+
+fn=results-$(date +%s)
+echo $fn
+cp results.txt $fn
