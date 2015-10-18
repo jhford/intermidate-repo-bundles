@@ -74,7 +74,7 @@ EOF
   pauseTime=0;
 }
 
-reps="0 1 2 3 4 5 6 7 8 9"
+reps="0 1 2"
 xzlevels="0 2 4 5 6 6e 8 9 9e"
 levels="1 3 5 6 7 9"
 threads="1 2 4"
@@ -103,7 +103,7 @@ for i in $reps ; do
     purge
     rm -rf diff.7z
     logBegin
-    ${SZA} -bd -t7z -mx=0 u base.7z -u- -up0q3x2z0\!diff.7z mozilla-central > /dev/null
+    ${SZA} -bd -t7z -mx=0 u base.7z -u- -up0q3r2x2y2z0w2\!diff.7z mozilla-central > /dev/null
     logEnd "generate-7zip-diff" $i size diff.7z level $l
 
     # Extract base
