@@ -109,15 +109,16 @@ for i in $reps ; do
     rm -rf output
     mkdir output
     logBegin
-    (cd output && ${SZA} x base.7z > /dev/null)
+    (cd output && ${SZA} x ../base.7z > /dev/null)
     logEnd "extract-7z-base" $i level $l
 
     # Extract diff
     logBegin
-    (cd output && ${SZA} x diff.7z -aoa  -y > /dev/null)
+    (cd output && ${SZA} x ../diff.7z -aoa  -y > /dev/null)
     logEnd "extract-7z-diff" $i level $l
   done
 done
+
 
 echo Starting GNU Tar tests 
 for i in $reps ; do
