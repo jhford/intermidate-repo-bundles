@@ -93,6 +93,7 @@ for i in $reps ; do
     # Generate base
     hg -R mozilla-central up -r bbea1ed9586a -C > /dev/null
     purge
+    rm -f base.7z
     logBegin
     ${SZA} -bd -t7z -mx=${l} a base.7z mozilla-central > /dev/null
     logEnd "generate-7zip-base" $i size base.7z level $l
@@ -100,6 +101,7 @@ for i in $reps ; do
     # Generate diff
     hg -R mozilla-central up -r bb5c1f7cc078 -C > /dev/null
     purge
+    rm -rf diff.7z
     logBegin
     ${SZA} -bd -t7z -mx=0 u base.7z -u- -up0q3x2z0\!diff.7z mozilla-central > /dev/null
     logEnd "generate-7zip-diff" $i size diff.7z level $l
