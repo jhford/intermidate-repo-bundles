@@ -15,6 +15,7 @@ BZIP2=${BZIP2:-bzip2}
 BUNZIP2=${BUNZIP2:-bunzip2}
 PIGZ=${PIGZ:-pigz}
 UNPIGZ=${UNPIGZ:-unpigz}
+SZA=${SZA:-7za}
 
 purge () {
   if [ $(uname) == Darwin ] ; then
@@ -81,41 +82,79 @@ threads="1 2 4"
 # 4 days of mozilla-central
 # bbea1ed9586a -> bb5c1f7cc078
 
-# Generating base
-hg -R mozilla-central up -r bbea1ed9586a -C &> /dev/null
+# 7-Zip: http://a32.me/2010/08/7zip-differential-backup-linux-windows/
+# NOTE: 7-Zip doesn't store owner/group, but since our repos don't
+#       either, we should be fine!
+
+echo Starting 7-zip tests
 for i in $reps ; do
+  for l in 0 $levels ; do
+    echo rep $i level $l
+    # Generate base
+    hg -R mozilla-central up -r bbea1ed9586a -C > /dev/null
+    purge
+    logBegin
+    ${SZA} -bd -t7z -mx=${l} a base.7z mozilla-central > /dev/null
+    logEnd "generate-7zip-base" $i size base.7z level $l
+
+    # Generate diff
+    hg -R mozilla-central up -r bb5c1f7cc078 -C > /dev/null
+    purge
+    logBegin
+    ${SZA} -bd -t7z -mx=0 u base.7z -u- -up0q3x2z0\!diff.7z mozilla-central > /dev/null
+    logEnd "generate-7zip-diff" $i size base.7z level $l
+
+    # Extract base
+    purge
+    rm -rf output
+    mkdir output
+    logBegin
+    (cd output && ${SZA} x base.7z > /dev/null)
+    logEnd "extract-7z-base" $i level $l
+
+    # Extract diff
+    logBegin
+    (cd output && ${SZA} x diff.7z -aoa  -y > /dev/null)
+    logEnd "extract-7z-diff" $i level $l
+  done
+done
+
+echo Starting GNU Tar tests 
+for i in $reps ; do
+  echo rep $i
+  # Generate tar base archive
+  hg -R mozilla-central up -r bbea1ed9586a -C > /dev/null
   purge
   logBegin
   ${TAR} -cpf base.tar --level=0 -g out.snar mozilla-central
   logEnd "generate-tar-base" $i size base.tar
-done
 
-# Generating diff
-hg -R mozilla-central up -r bb5c1f7cc078 -C &> /dev/null
-for i in $reps ; do
+  # Generate tar diff archive
+  hg -R mozilla-central up -r bb5c1f7cc078 -C > /dev/null
   purge
   logBegin
   ${TAR} -cpf diff.tar -g out.snar mozilla-central
   logEnd "generate-tar-diff" $i size diff.tar
-done
 
-# Extracting everything
-for i in $reps ; do
+  # Extract tar base archive
   purge
   rm -rf output
   mkdir output
   logBegin
   ${TAR} -C output -xf base.tar -g /dev/null
   logEnd "extract-tar-base" $i size output
+
+  # Extract tar diff archive
   logBegin
   ${TAR} -C output -xf diff.tar -g /dev/null
   logEnd "extract-tar-diff" $i size output
-  rm -rf temp
 done
+
+
+echo Starting tar compressor tests
 
 cp base.tar base-comp.tar
 cp diff.tar diff-comp.tar
-
 for img in diff-comp base-comp ; do
   for i in $reps ; do
     for l in $xzlevels ; do
