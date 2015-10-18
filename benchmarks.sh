@@ -102,7 +102,7 @@ for i in $reps ; do
     purge
     logBegin
     ${SZA} -bd -t7z -mx=0 u base.7z -u- -up0q3x2z0\!diff.7z mozilla-central > /dev/null
-    logEnd "generate-7zip-diff" $i size base.7z level $l
+    logEnd "generate-7zip-diff" $i size diff.7z level $l
 
     # Extract base
     purge
