@@ -123,11 +123,11 @@ for img in diff-comp base-comp ; do
         purge
         logBegin
         $XZ -T $t -${l} ${img}.tar
-        logEnd "compress-xz" $i size ${img}.tar.xz level $l threads $t
+        logEnd "compress-xz-$img" $i size ${img}.tar.xz level $l threads $t
         purge
         logBegin
         $XZ -T $t --decompress ${img}.tar.xz
-        logEnd "decompress-xz" $i level $l threads $t
+        logEnd "decompress-xz-$img" $i level $l threads $t
       done
     done
 
@@ -137,22 +137,22 @@ for img in diff-comp base-comp ; do
       purge
       logBegin
       $BZIP2 -$l ${img}.tar
-      logEnd "compress-bzip2" $i size ${img}.tar.bz2 level $l
+      logEnd "compress-bzip2i-$img" $i size ${img}.tar.bz2 level $l
       purge
       logBegin
       $BUNZIP2 ${img}.tar.bz2
-      logEnd "decompress-bzip2" $i level $l
+      logEnd "decompress-bzip2-$img" $i level $l
 
       # Gzip
       rm -f ${img}.tar.gz
       purge
       logBegin
       $GZIP -$l ${img}.tar
-      logEnd "compress-gzip" $i size ${img}.tar.gz level $l
+      logEnd "compress-gzip-$img" $i size ${img}.tar.gz level $l
       purge
       logBegin
       $GUNZIP ${img}.tar.gz
-      logEnd "decompress-gzip" $i level $l
+      logEnd "decompress-gzip-$img" $i level $l
 
       # pigz
       for t in $threads ; do
@@ -160,11 +160,11 @@ for img in diff-comp base-comp ; do
         purge
         logBegin
         $PIGZ -p ${t} -${l} ${img}.tar
-        logEnd "compress-pigz" $i size ${img}.tar.gz level $l threads $t
+        logEnd "compress-pigz-$img" $i size ${img}.tar.gz level $l threads $t
         purge
         logBegin
         $UNPIGZ -p ${t} ${img}.tar.gz
-        logEnd "decompress-pigz" $i level $l threads $t
+        logEnd "decompress-pigz-$img" $i level $l threads $t
       done
     done
   done
