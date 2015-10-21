@@ -107,12 +107,12 @@ for i in $reps ; do
       rm -rf output
       mkdir output
       logBegin
-      $DAR -x ../base -O -R $PWD/output/mozilla-central  # -O supresses a warning about ownership
+      $DAR -x base -O -R $PWD/output/mozilla-central  # -O supresses a warning about ownership
       logEnd "extract-dar-base" $i level $l algo $c
 
       # Extract diff
       logBegin
-      $DAR -x ../diff -w -O -R $PWD/output/mozilla-central  # -w overwrites files 
+      $DAR -x diff -w -O -R $PWD/output/mozilla-central  # -w overwrites files 
       logEnd "extract-dar-diff" $i level $l algo $c
     done
   done
